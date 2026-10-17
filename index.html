@@ -1,0 +1,465 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cloud Service Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: one notebook page. Red margin rule on the left, one ruled row per job, AWS / Azure / GCP in fixed columns, sticky column header, sticky-note traps at the bottom. */
+:root {
+  --paper: #fafbf6;
+  --paper-2: #eef2e9;
+  --line: #c6d6e8;
+  --margin: #e48a8a;
+  --ink: #1d2756;
+  --ink-soft: #566086;
+  --hl-aws: rgba(255, 178, 36, 0.45);
+  --hl-azure: rgba(64, 156, 255, 0.34);
+  --hl-gcp: rgba(52, 190, 110, 0.38);
+  --stamp: #b3261e;
+  --sticky: #fff1a0;
+  --sticky-ink: #3b3410;
+  --font-display: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+  --font-body: 'Patrick Hand', 'Segoe Print', 'Bradley Hand', cursive;
+  --cols: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 1.25fr);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161d;
+    --paper-2: #1a202a;
+    --line: #2a3546;
+    --margin: #7a3b45;
+    --ink: #e3e9fb;
+    --ink-soft: #9ba7c7;
+    --hl-aws: rgba(255, 178, 36, 0.32);
+    --hl-azure: rgba(80, 170, 255, 0.32);
+    --hl-gcp: rgba(60, 200, 120, 0.3);
+    --stamp: #ff8a80;
+    --sticky: #4a4220;
+    --sticky-ink: #fbeeb0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161d;
+  --paper-2: #1a202a;
+  --line: #2a3546;
+  --margin: #7a3b45;
+  --ink: #e3e9fb;
+  --ink-soft: #9ba7c7;
+  --hl-aws: rgba(255, 178, 36, 0.32);
+  --hl-azure: rgba(80, 170, 255, 0.32);
+  --hl-gcp: rgba(60, 200, 120, 0.3);
+  --stamp: #ff8a80;
+  --sticky: #4a4220;
+  --sticky-ink: #fbeeb0;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.4;
+  padding-block: 28px 72px;
+  padding-inline: 16px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+
+.page {
+  position: relative;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-left: 18px;
+}
+.page::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--margin);
+}
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); line-height: 1; }
+.lede { margin: 8px 0 0; color: var(--ink-soft); max-width: 62ch; }
+
+/* controls */
+.controls { display: flex; flex-direction: column; gap: 14px; margin-top: 22px; }
+.row-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hand {
+  border: 1.5px solid var(--ink);
+  border-radius: 255px 14px 225px 14px / 14px 225px 14px 255px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+#q {
+  width: 100%;
+  max-width: 440px;
+  min-height: 44px;
+  padding: 6px 16px;
+  font-size: 1.05rem;
+}
+#q::placeholder { color: var(--ink-soft); }
+.chip {
+  min-height: 40px;
+  padding: 4px 14px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+
+/* scope tags */
+.sc {
+  display: inline-block;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  padding: 0 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 99px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sc.g { background: var(--ink); color: var(--paper); }
+.sc.z { border-style: dashed; }
+.sc.m { border-style: double; border-width: 3px; padding: 0 6px; }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 16px; }
+.legend button {
+  display: flex; align-items: flex-start; gap: 8px;
+  text-align: left; cursor: pointer;
+  background: transparent; border: 0; padding: 4px 6px;
+  font: inherit; color: var(--ink-soft);
+  border-radius: 8px;
+}
+.legend button[aria-pressed="true"] { background: var(--paper-2); color: var(--ink); }
+.legend .sc { flex: none; margin-top: 2px; }
+.legend small { font-size: 0.95rem; line-height: 1.25; }
+.legend-label { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--stamp); }
+
+/* column header */
+.cols {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: var(--cols);
+  column-gap: 16px;
+  margin-top: 26px;
+  padding: 8px 0 4px;
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.cols span { justify-self: start; }
+.cols .c-aws   { background: linear-gradient(transparent 55%, var(--hl-aws) 55%); }
+.cols .c-azure { background: linear-gradient(transparent 55%, var(--hl-azure) 55%); }
+.cols .c-gcp   { background: linear-gradient(transparent 55%, var(--hl-gcp) 55%); }
+.cols .c-job   { font-size: 1.3rem; color: var(--ink-soft); font-weight: 500; align-self: end; }
+
+/* categories and rows */
+.cat { margin-top: 30px; }
+.cat h2 { font-size: 2.1rem; line-height: 1.1; }
+.cat h2 span { background: linear-gradient(transparent 62%, var(--hl-aws) 62%); padding-inline: 2px; }
+.cat:nth-of-type(3n+2) h2 span { background: linear-gradient(transparent 62%, var(--hl-azure) 62%); }
+.cat:nth-of-type(3n+3) h2 span { background: linear-gradient(transparent 62%, var(--hl-gcp) 62%); }
+
+.row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  column-gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.job { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; line-height: 1.1; padding-right: 4px; }
+.cell { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; transition: opacity 0.15s; }
+.cell::before { display: none; }
+.stack { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.svc { overflow-wrap: anywhere; }
+.note {
+  grid-column: 2 / -1;
+  margin: 4px 0 0;
+  font-size: 0.97rem;
+  color: var(--ink-soft);
+}
+.note::before { content: "note: "; font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--stamp); }
+
+/* scope highlight from the legend */
+body[data-scope="g"] .cell:not([data-scopes~="g"]),
+body[data-scope="r"] .cell:not([data-scopes~="r"]),
+body[data-scope="z"] .cell:not([data-scopes~="z"]),
+body[data-scope="m"] .cell:not([data-scopes~="m"]) { opacity: 0.22; }
+
+#empty { margin: 28px 0 0; color: var(--ink-soft); }
+
+/* sticky notes */
+.traps { margin-top: 48px; }
+.traps h2 { font-size: 2.1rem; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin-top: 16px; }
+.sticky {
+  background: var(--sticky);
+  color: var(--sticky-ink);
+  padding: 14px 16px 16px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.14);
+  transform: rotate(var(--tilt, 0deg));
+}
+.sticky h3 { font-size: 1.5rem; line-height: 1.05; margin-bottom: 4px; }
+.sticky p { margin: 0; font-size: 1rem; line-height: 1.35; }
+.sticky:nth-child(1) { --tilt: -1.2deg; }
+.sticky:nth-child(2) { --tilt: 0.8deg; }
+.sticky:nth-child(3) { --tilt: -0.5deg; }
+.sticky:nth-child(4) { --tilt: 1deg; }
+.sticky:nth-child(5) { --tilt: -0.9deg; }
+.sticky:nth-child(6) { --tilt: 0.6deg; }
+
+.foot { margin-top: 40px; color: var(--ink-soft); font-size: 0.95rem; max-width: 64ch; }
+
+@media (max-width: 760px) {
+  body { font-size: 17px; }
+  .page { padding-left: 14px; }
+  .cols { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr); row-gap: 6px; padding: 12px 0; }
+  .job { font-size: 1.55rem; }
+  .cell { grid-template-columns: 4.6rem minmax(0, 1fr); column-gap: 8px; }
+  .cell::before {
+    display: block;
+    content: attr(data-label);
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.2;
+    justify-self: start;
+    align-self: start;
+    padding-inline: 4px;
+  }
+  .cell.aws::before   { background: linear-gradient(transparent 55%, var(--hl-aws) 55%); }
+  .cell.azure::before { background: linear-gradient(transparent 55%, var(--hl-azure) 55%); }
+  .cell.gcp::before   { background: linear-gradient(transparent 55%, var(--hl-gcp) 55%); }
+  .note { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cell { transition: none; }
+}
+</style>
+
+<main class="page">
+  <header>
+    <h1>AWS, Azure and GCP, side by side</h1>
+    <p class="lede">One row per job. Each service carries a tag for where it lives, so you can see what is global, regional or zonal at a glance.</p>
+  </header>
+
+  <div class="controls">
+    <div class="row-controls">
+      <input id="q" class="hand" type="search" placeholder="Search a service, like Lambda, VNet or Spanner" aria-label="Search services">
+    </div>
+    <div class="row-controls" id="cats" role="group" aria-label="Filter by area"></div>
+    <div>
+      <span class="legend-label">Tap a tag to highlight it:</span>
+      <div class="legend" id="legend" role="group" aria-label="Highlight by scope"></div>
+    </div>
+  </div>
+
+  <div class="cols" aria-hidden="true">
+    <span class="c-job">What you need</span>
+    <span class="c-aws">AWS</span>
+    <span class="c-azure">Azure</span>
+    <span class="c-gcp">GCP</span>
+  </div>
+
+  <div id="map"></div>
+  <p id="empty" hidden>Nothing matches that search. Try a shorter word.</p>
+
+  <section class="traps">
+    <h2>Easy to get wrong</h2>
+    <div class="notes">
+      <div class="sticky"><h3>Network scope</h3><p>A GCP VPC is global, with regional subnets. An AWS VPC or Azure VNet stays inside one region.</p></div>
+      <div class="sticky"><h3>Subnets differ</h3><p>An AWS subnet lives in one AZ. Azure and GCP subnets cover the whole region.</p></div>
+      <div class="sticky"><h3>Global is not outage-proof</h3><p>The IAM, Route 53 and CloudFront control planes lean on us-east-1, so trouble there can reach them.</p></div>
+      <div class="sticky"><h3>Names global, data not</h3><p>S3 buckets and Azure storage accounts need globally unique names, but the data sits in one region.</p></div>
+      <div class="sticky"><h3>Azure resource groups</h3><p>A resource group has a region for its metadata, yet it can hold resources from any region.</p></div>
+      <div class="sticky"><h3>Pick the spread early</h3><p>Cloud Storage, BigQuery and Spanner ask for region, dual-region or multi-region when you create them.</p></div>
+    </div>
+  </section>
+
+  <p class="foot">Names and scopes are from October 2026. Vendors rename things often, so check the docs before you commit a design. Terraform covers all three.</p>
+</main>
+
+<script>
+(function () {
+  var SC = { g: 'global', r: 'regional', z: 'zonal', m: 'multi-region' };
+  var SC_HELP = {
+    g: 'One control plane for the whole account or tenant',
+    r: 'You pick a region and the data stays there',
+    z: 'Pinned to one availability zone',
+    m: 'Can span regions, by opt-in or choice at creation'
+  };
+
+  // row: [job, AWS, Azure, GCP, optional note]; each provider: [service names, scope codes]
+  var DATA = [
+    { id: 'account', short: 'Account', name: 'Account and guardrails', rows: [
+      ['Top-level boundary', ['Account', 'g'], ['Subscription', 'g'], ['Project', 'g'], 'In GCP the project is the main isolation unit.'],
+      ['Group many of them', ['Organizations', 'g'], ['Management groups', 'g'], ['Organization and folders', 'g']],
+      ['Org-wide guardrails', ['SCPs', 'g'], ['Azure Policy', 'g'], ['Organization Policy', 'g']],
+      ['Billing and cost', ['Billing, Cost Explorer, Budgets', 'g'], ['Cost Management and Billing', 'g'], ['Cloud Billing, Budgets', 'g']]
+    ] },
+    { id: 'identity', short: 'Identity', name: 'Identity and security', rows: [
+      ['Identity and access', ['IAM', 'g'], ['Entra ID, Azure RBAC', 'g'], ['Cloud IAM', 'g']],
+      ['Workforce sign-on', ['IAM Identity Center', 'r'], ['Entra ID SSO', 'g'], ['Cloud Identity, Workforce Identity Federation', 'g'], 'Identity Center lives in one home region that you pick once.'],
+      ['Identity for workloads', ['IAM roles, IRSA, Pod Identity', 'g'], ['Managed Identity, Workload Identity', 'g'], ['Service accounts, Workload Identity Federation', 'g'], 'OIDC from CI pipelines works on all three, so no long-lived keys.'],
+      ['Encryption keys', ['KMS', 'r'], ['Key Vault', 'r'], ['Cloud KMS', 'r']],
+      ['Secrets', ['Secrets Manager', 'r'], ['Key Vault secrets', 'r'], ['Secret Manager', 'g'], 'Secret Manager is global. You choose where the replicas live.'],
+      ['TLS certificates', ['ACM', 'r'], ['Key Vault certificates', 'r'], ['Certificate Manager', 'g'], 'ACM certificates used with CloudFront must be created in us-east-1.'],
+      ['Threat detection', ['GuardDuty, Security Hub', 'r'], ['Defender for Cloud', 'g'], ['Security Command Center', 'g']],
+      ['Web firewall and DDoS', ['WAF, Shield', 'r g'], ['Front Door WAF, DDoS Protection', 'g r'], ['Cloud Armor', 'g r']]
+    ] },
+    { id: 'compute', short: 'Compute', name: 'Compute', rows: [
+      ['Virtual machines', ['EC2', 'z'], ['Virtual Machines', 'r z'], ['Compute Engine', 'z'], 'A VM sits in one zone on all three. Azure lets you leave the zone unset.'],
+      ['VM autoscaling', ['Auto Scaling groups', 'r'], ['VM Scale Sets', 'r'], ['Managed Instance Groups', 'r z']],
+      ['Managed Kubernetes', ['EKS', 'r'], ['AKS', 'r'], ['GKE', 'r z'], 'GKE clusters can be regional or zonal.'],
+      ['Containers without servers', ['ECS on Fargate, App Runner', 'r'], ['Container Apps, ACI', 'r'], ['Cloud Run', 'r']],
+      ['Functions', ['Lambda', 'r'], ['Azure Functions', 'r'], ['Cloud Run functions', 'r']],
+      ['App hosting (PaaS)', ['Elastic Beanstalk', 'r'], ['App Service', 'r'], ['App Engine', 'r']],
+      ['Batch jobs', ['AWS Batch', 'r'], ['Azure Batch', 'r'], ['Cloud Batch', 'r']],
+      ['Container images', ['ECR', 'r'], ['ACR', 'r'], ['Artifact Registry', 'r'], 'All three can replicate images across regions.']
+    ] },
+    { id: 'network', short: 'Network', name: 'Networking', rows: [
+      ['Virtual network', ['VPC', 'r'], ['VNet', 'r'], ['VPC network', 'g'], 'The big difference. A GCP VPC is global with regional subnets.'],
+      ['Subnet', ['Subnet', 'z'], ['Subnet', 'r'], ['Subnet', 'r'], 'An AWS subnet lives in one AZ. Azure and GCP subnets cover the whole region.'],
+      ['Traffic rules', ['Security groups, NACLs', 'r'], ['NSGs', 'r'], ['VPC firewall rules', 'g']],
+      ['Layer 7 load balancer', ['ALB', 'r'], ['Application Gateway', 'r'], ['Application Load Balancer', 'g r'], 'GCP offers both global and regional versions.'],
+      ['Layer 4 load balancer', ['NLB', 'r'], ['Load Balancer', 'r'], ['Network Load Balancer', 'r']],
+      ['CDN and edge', ['CloudFront', 'g'], ['Front Door', 'g'], ['Cloud CDN', 'g']],
+      ['DNS', ['Route 53', 'g'], ['Azure DNS', 'g'], ['Cloud DNS', 'g']],
+      ['Global traffic steering', ['Global Accelerator', 'g'], ['Traffic Manager', 'g'], ['Global load balancer with anycast IP', 'g']],
+      ['NAT for private subnets', ['NAT Gateway', 'z'], ['NAT Gateway', 'r z'], ['Cloud NAT', 'r']],
+      ['Connect many networks', ['Transit Gateway', 'r'], ['Virtual WAN, hub VNet', 'g r'], ['Network Connectivity Center', 'g']],
+      ['Private access to services', ['PrivateLink', 'r'], ['Private Link', 'r'], ['Private Service Connect', 'r']],
+      ['VPN to on-prem', ['Site-to-Site VPN', 'r'], ['VPN Gateway', 'r'], ['Cloud VPN', 'r']],
+      ['Dedicated line', ['Direct Connect', 'r'], ['ExpressRoute', 'r'], ['Cloud Interconnect', 'r']],
+      ['API front door', ['API Gateway', 'r'], ['API Management', 'r'], ['API Gateway, Apigee', 'r']]
+    ] },
+    { id: 'storage', short: 'Storage', name: 'Storage', rows: [
+      ['Object storage', ['S3', 'r'], ['Blob Storage', 'r'], ['Cloud Storage', 'r m'], 'Bucket and account names are globally unique on all three. The data is not global.'],
+      ['Block disks', ['EBS', 'z'], ['Managed Disks', 'r z'], ['Persistent Disk, Hyperdisk', 'z r']],
+      ['Shared file system', ['EFS, FSx', 'r'], ['Azure Files, NetApp Files', 'r'], ['Filestore', 'r z']],
+      ['Cold archive', ['S3 Glacier', 'r'], ['Blob Archive tier', 'r'], ['Archive storage class', 'r']],
+      ['Backup', ['AWS Backup', 'r'], ['Azure Backup', 'r'], ['Backup and DR Service', 'r']],
+      ['Bulk data transfer', ['DataSync', 'r'], ['Data Box, Storage Mover', 'r'], ['Storage Transfer Service', 'r']]
+    ] },
+    { id: 'data', short: 'Databases', name: 'Databases', rows: [
+      ['Managed relational', ['RDS', 'r'], ['Azure SQL, Flexible Server', 'r'], ['Cloud SQL', 'r']],
+      ['Cloud-native relational', ['Aurora', 'r m'], ['SQL Database Hyperscale', 'r'], ['AlloyDB', 'r'], 'Aurora Global Database adds cross-region replicas.'],
+      ['Global-scale SQL', ['Aurora DSQL', 'r m'], ['No direct match', ''], ['Spanner', 'r m']],
+      ['NoSQL key-value and documents', ['DynamoDB', 'r m'], ['Cosmos DB', 'r m'], ['Firestore, Bigtable', 'r m'], 'DynamoDB Global Tables and Cosmos DB multi-region replicate across regions.'],
+      ['In-memory cache', ['ElastiCache, MemoryDB', 'r'], ['Azure Cache for Redis, Managed Redis', 'r'], ['Memorystore', 'r']],
+      ['Warehouse and lake SQL', ['Redshift, Athena', 'r'], ['Fabric, Synapse', 'r'], ['BigQuery', 'r m']]
+    ] },
+    { id: 'messaging', short: 'Messaging', name: 'Messaging and events', rows: [
+      ['Queues', ['SQS', 'r'], ['Service Bus, Storage Queues', 'r'], ['Cloud Tasks', 'r']],
+      ['Pub/sub topics', ['SNS', 'r'], ['Event Grid, Service Bus topics', 'r'], ['Pub/Sub', 'g'], 'Pub/Sub is global. You can limit where messages are stored.'],
+      ['Streaming', ['Kinesis, MSK', 'r'], ['Event Hubs', 'r'], ['Pub/Sub, Managed Kafka', 'g r']],
+      ['Event bus', ['EventBridge', 'r'], ['Event Grid', 'r'], ['Eventarc', 'r']],
+      ['Workflows', ['Step Functions', 'r'], ['Logic Apps, Durable Functions', 'r'], ['Workflows', 'r']]
+    ] },
+    { id: 'devops', short: 'DevOps', name: 'DevOps and automation', rows: [
+      ['Infrastructure as code', ['CloudFormation', 'r'], ['ARM, Bicep', 'g'], ['Infrastructure Manager', 'r']],
+      ['CI/CD', ['CodePipeline, CodeBuild', 'r'], ['Azure Pipelines, GitHub Actions', 'g'], ['Cloud Build, Cloud Deploy', 'g r']],
+      ['GitOps on Kubernetes', ['Argo CD on EKS', 'r'], ['AKS GitOps with Flux', 'r'], ['GKE Config Sync', 'r']]
+    ] },
+    { id: 'observe', short: 'Observability', name: 'Observability', rows: [
+      ['Metrics and logs', ['CloudWatch', 'r'], ['Azure Monitor, Log Analytics', 'r'], ['Cloud Monitoring, Cloud Logging', 'g']],
+      ['Audit trail', ['CloudTrail', 'r'], ['Activity Log', 'g'], ['Cloud Audit Logs', 'g'], 'CloudTrail is regional, but a single trail can cover all regions.'],
+      ['Tracing', ['X-Ray', 'r'], ['Application Insights', 'r'], ['Cloud Trace', 'g']],
+      ['Config and inventory', ['AWS Config', 'r'], ['Resource Graph', 'g'], ['Cloud Asset Inventory', 'g']]
+    ] },
+    { id: 'ai', short: 'Analytics and AI', name: 'Analytics and AI', rows: [
+      ['ETL and pipelines', ['Glue', 'r'], ['Data Factory', 'r'], ['Dataflow, Dataproc', 'r']],
+      ['ML platform', ['SageMaker AI', 'r'], ['Azure Machine Learning', 'r'], ['Vertex AI', 'r']],
+      ['Foundation models', ['Bedrock', 'r'], ['Azure OpenAI, Microsoft Foundry', 'r'], ['Vertex AI with Gemini', 'r g']],
+      ['Dashboards', ['QuickSight', 'r'], ['Power BI', 'g'], ['Looker, Looker Studio', 'g']]
+    ] }
+  ];
+
+  var state = { cat: 'all', scope: '', q: '' };
+  var mapEl = document.getElementById('map');
+  var catsEl = document.getElementById('cats');
+  var legendEl = document.getElementById('legend');
+  var qEl = document.getElementById('q');
+  var emptyEl = document.getElementById('empty');
+
+  function cell(p, label, cls) {
+    var codes = p[1].split(' ').filter(Boolean);
+    var tags = codes.map(function (c) { return '<span class="sc ' + c + '">' + SC[c] + '</span>'; }).join('');
+    return '<div class="cell ' + cls + '" data-label="' + label + '" data-scopes="' + codes.join(' ') + '">' +
+      '<div class="stack"><span class="svc">' + p[0] + '</span>' + tags + '</div></div>';
+  }
+
+  function render() {
+    mapEl.innerHTML = DATA.map(function (c) {
+      var rows = c.rows.map(function (r) {
+        var text = (r[0] + ' ' + r[1][0] + ' ' + r[2][0] + ' ' + r[3][0] + ' ' + (r[4] || '')).toLowerCase();
+        return '<div class="row" data-q="' + text.replace(/"/g, '') + '">' +
+          '<div class="job">' + r[0] + '</div>' +
+          cell(r[1], 'AWS', 'aws') + cell(r[2], 'Azure', 'azure') + cell(r[3], 'GCP', 'gcp') +
+          (r[4] ? '<p class="note">' + r[4] + '</p>' : '') +
+          '</div>';
+      }).join('');
+      return '<section class="cat" id="' + c.id + '" data-cat="' + c.id + '"><h2><span>' + c.name + '</span></h2>' + rows + '</section>';
+    }).join('');
+
+    var chips = [{ id: 'all', short: 'Everything' }].concat(DATA);
+    catsEl.innerHTML = chips.map(function (c) {
+      return '<button type="button" class="chip hand" data-cat="' + c.id + '" aria-pressed="' + (c.id === 'all') + '">' + c.short + '</button>';
+    }).join('');
+
+    legendEl.innerHTML = ['g', 'r', 'z', 'm'].map(function (k) {
+      return '<button type="button" data-scope="' + k + '" aria-pressed="false"><span class="sc ' + k + '">' + SC[k] + '</span><small>' + SC_HELP[k] + '</small></button>';
+    }).join('');
+  }
+
+  function apply() {
+    var shown = 0;
+    mapEl.querySelectorAll('.cat').forEach(function (sec) {
+      var inCat = state.cat === 'all' || sec.dataset.cat === state.cat;
+      var any = 0;
+      sec.querySelectorAll('.row').forEach(function (row) {
+        var ok = inCat && (!state.q || row.dataset.q.indexOf(state.q) !== -1);
+        row.hidden = !ok;
+        if (ok) any++;
+      });
+      sec.hidden = any === 0;
+      shown += any;
+    });
+    emptyEl.hidden = shown !== 0;
+    document.body.dataset.scope = state.scope;
+  }
+
+  catsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    state.cat = b.dataset.cat;
+    catsEl.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    apply();
+  });
+  legendEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    state.scope = state.scope === b.dataset.scope ? '' : b.dataset.scope;
+    legendEl.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.scope === state.scope)); });
+    apply();
+  });
+  qEl.addEventListener('input', function () {
+    state.q = qEl.value.trim().toLowerCase();
+    apply();
+  });
+
+  render();
+  apply();
+})();
+</script>
+
+</body></html>
